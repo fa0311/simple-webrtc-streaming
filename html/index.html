@@ -1,683 +1,696 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="utf-8">
+  <head>
+    <meta charset="utf-8" />
     <title>SRS WebRTC Player</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1.0,viewport-fit=cover"
+    />
     <style>
-        :root {
-            --primary-color: #4CAF50;
-            --danger-color: #F44336;
-            --warning-color: #FFC107;
-            --bg-overlay: rgba(0, 0, 0, .85);
-            --bg-controls: rgba(0, 0, 0, .6);
-            --border-radius: 12px;
-            --transition: all .2s ease;
+      :root {
+        --primary-color: #4caf50;
+        --danger-color: #f44336;
+        --warning-color: #ffc107;
+        --bg-overlay: rgba(0, 0, 0, 0.85);
+        --bg-controls: rgba(0, 0, 0, 0.6);
+        --border-radius: 12px;
+        --transition: all 0.2s ease;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Arial, sans-serif;
+        overflow: hidden;
+      }
+
+      #player-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        touch-action: none;
+      }
+
+      #player-container.fullscreen {
+        background: #000;
+      }
+
+      video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transform-origin: center center;
+        transition: transform 0.15s ease-out;
+        background: #000;
+      }
+
+      /* Loading Spinner */
+      #loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: none;
+      }
+
+      #loading.show {
+        display: block;
+      }
+
+      .spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Toolbar */
+      #toolbar {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: var(--bg-controls);
+        border-radius: var(--border-radius);
+        backdrop-filter: blur(10px);
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      #player-container:hover #toolbar,
+      #toolbar:hover,
+      #toolbar.force-show {
+        opacity: 1;
+      }
+
+      .btn {
+        width: 40px;
+        height: 40px;
+        border: none;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+        transition: var(--transition);
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.05);
+      }
+
+      .btn:active {
+        transform: scale(0.95);
+      }
+
+      .btn.active {
+        background: var(--primary-color);
+      }
+
+      .btn[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .btn[disabled]:hover {
+        transform: none;
+      }
+
+      /* Tooltip */
+      .btn::after {
+        content: attr(aria-label);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 6px 10px;
+        background: rgba(0, 0, 0, 0.9);
+        color: #fff;
+        font-size: 12px;
+        border-radius: 6px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        margin-bottom: 8px;
+      }
+
+      .btn:hover::after {
+        opacity: 1;
+      }
+
+      /* Special buttons */
+      #debug-btn,
+      #stats-btn {
+        width: auto;
+        padding: 0 16px;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .separator {
+        width: 1px;
+        height: 24px;
+        background: rgba(255, 255, 255, 0.2);
+        margin: 0 4px;
+      }
+
+      #zoom-label {
+        min-width: 50px;
+        color: #fff;
+        text-align: center;
+        font-size: 14px;
+        opacity: 0.8;
+        user-select: none;
+      }
+
+      /* Volume Slider */
+      .volume-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #volume-slider {
+        width: 80px;
+        height: 4px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 2px;
+        outline: none;
+        transition: opacity 0.2s;
+      }
+
+      #volume-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 12px;
+        height: 12px;
+        background: #fff;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      #volume-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+      }
+
+      /* Error Message */
+      #error {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 20px;
+        background: var(--danger-color);
+        border-radius: var(--border-radius);
+        color: #fff;
+        font-size: 14px;
+        display: none;
+        max-width: 90%;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      #error.show {
+        display: block;
+        animation: slideIn 0.3s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          transform: translateX(-50%) translateY(-20px);
+          opacity: 0;
         }
 
-        * {
-            box-sizing: border-box;
+        to {
+          transform: translateX(-50%) translateY(0);
+          opacity: 1;
+        }
+      }
+
+      /* Connection Status */
+      #connection-status {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        background: var(--bg-controls);
+        border-radius: 20px;
+        color: #fff;
+        font-size: 13px;
+        backdrop-filter: blur(10px);
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      #connection-status.show {
+        opacity: 1;
+      }
+
+      .status-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--warning-color);
+        animation: pulse 2s infinite;
+      }
+
+      .status-indicator.good {
+        background: var(--primary-color);
+      }
+
+      .status-indicator.bad {
+        background: var(--danger-color);
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
         }
 
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            overflow: hidden;
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      /* Debug Panel */
+      #debug-panel {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 400px;
+        max-height: calc(100vh - 40px);
+        background: var(--bg-overlay);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius);
+        color: #fff;
+        font-size: 13px;
+        display: none;
+        overflow: hidden;
+        backdrop-filter: blur(20px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        animation: slideInRight 0.3s ease;
+      }
+
+      @keyframes slideInRight {
+        from {
+          transform: translateX(20px);
+          opacity: 0;
         }
 
-        #player-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            touch-action: none;
+        to {
+          transform: translateX(0);
+          opacity: 1;
         }
+      }
 
-        #player-container.fullscreen {
-            background: #000;
-        }
+      #debug-panel.show {
+        display: flex;
+        flex-direction: column;
+      }
 
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            transform-origin: center center;
-            transition: transform .15s ease-out;
-            background: #000;
-        }
+      .debug-tabs {
+        display: flex;
+        background: rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
 
-        /* Loading Spinner */
-        #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-        }
+      .debug-tab {
+        flex: 1;
+        padding: 12px;
+        text-align: center;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        transition: var(--transition);
+        border-bottom: 2px solid transparent;
+      }
 
-        #loading.show {
-            display: block;
-        }
+      .debug-tab:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
 
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(255, 255, 255, .1);
-            border-top-color: var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
+      .debug-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+      }
 
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
+      .debug-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        font-weight: 600;
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.05);
+      }
 
-        /* Toolbar */
+      .debug-close {
+        cursor: pointer;
+        font-size: 20px;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+      }
+
+      .debug-close:hover {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .debug-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+      }
+
+      .debug-content::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .debug-content::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .debug-content::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+      }
+
+      .debug-section {
+        margin-bottom: 24px;
+      }
+
+      .debug-section:last-child {
+        margin-bottom: 0;
+      }
+
+      .debug-section-title {
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: var(--primary-color);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .debug-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        padding: 4px 0;
+      }
+
+      .debug-label {
+        opacity: 0.7;
+        font-size: 12px;
+      }
+
+      .debug-value {
+        font-family: "SF Mono", "Monaco", "Consolas", monospace;
+        font-weight: 500;
+        font-size: 13px;
+      }
+
+      .debug-value.good {
+        color: var(--primary-color);
+      }
+
+      .debug-value.warning {
+        color: var(--warning-color);
+      }
+
+      .debug-value.bad {
+        color: var(--danger-color);
+      }
+
+      /* Graphs */
+      .mini-graph {
+        width: 100%;
+        height: 60px;
+        margin-top: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .graph-canvas {
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Performance Warning */
+      .perf-warning {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid var(--warning-color);
+        border-radius: 6px;
+        padding: 12px;
+        margin-top: 16px;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .perf-warning-title {
+        font-weight: 600;
+        color: var(--warning-color);
+        margin-bottom: 4px;
+      }
+
+      /* Export button */
+      .export-btn {
+        margin-top: 16px;
+        width: 100%;
+        padding: 10px;
+        background: var(--primary-color);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+
+      .export-btn:hover {
+        background: #45a049;
+      }
+
+      /* Mobile Responsive */
+      @media (max-width: 768px) {
         #toolbar {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            background: var(--bg-controls);
-            border-radius: var(--border-radius);
-            backdrop-filter: blur(10px);
-            opacity: 0;
-            transition: opacity .3s;
-        }
-
-        #player-container:hover #toolbar,
-        #toolbar:hover,
-        #toolbar.force-show {
-            opacity: 1;
+          bottom: 10px;
+          padding: 8px 12px;
+          gap: 4px;
+          width: calc(100% - 40px);
+          max-width: none;
         }
 
         .btn {
-            width: 40px;
-            height: 40px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, .1);
-            color: #fff;
-            font-size: 20px;
-            line-height: 1;
-            cursor: pointer;
-            transition: var(--transition);
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .btn:hover {
-            background: rgba(255, 255, 255, .2);
-            transform: scale(1.05);
-        }
-
-        .btn:active {
-            transform: scale(0.95);
-        }
-
-        .btn.active {
-            background: var(--primary-color);
-        }
-
-        .btn[disabled] {
-            opacity: .5;
-            cursor: not-allowed;
-        }
-
-        .btn[disabled]:hover {
-            transform: none;
-        }
-
-        /* Tooltip */
-        .btn::after {
-            content: attr(aria-label);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 6px 10px;
-            background: rgba(0, 0, 0, .9);
-            color: #fff;
-            font-size: 12px;
-            border-radius: 6px;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity .2s;
-            margin-bottom: 8px;
-        }
-
-        .btn:hover::after {
-            opacity: 1;
-        }
-
-        /* Special buttons */
-        #debug-btn,
-        #stats-btn {
-            width: auto;
-            padding: 0 16px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .separator {
-            width: 1px;
-            height: 24px;
-            background: rgba(255, 255, 255, .2);
-            margin: 0 4px;
-        }
-
-        #zoom-label {
-            min-width: 50px;
-            color: #fff;
-            text-align: center;
-            font-size: 14px;
-            opacity: .8;
-            user-select: none;
-        }
-
-        /* Volume Slider */
-        .volume-control {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+          width: 36px;
+          height: 36px;
+          font-size: 18px;
         }
 
         #volume-slider {
-            width: 80px;
-            height: 4px;
-            -webkit-appearance: none;
-            appearance: none;
-            background: rgba(255, 255, 255, .2);
-            border-radius: 2px;
-            outline: none;
-            transition: opacity .2s;
+          width: 60px;
         }
 
-        #volume-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 12px;
-            height: 12px;
-            background: #fff;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: transform .2s;
-        }
-
-        #volume-slider::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-        }
-
-        /* Error Message */
-        #error {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 12px 20px;
-            background: var(--danger-color);
-            border-radius: var(--border-radius);
-            color: #fff;
-            font-size: 14px;
-            display: none;
-            max-width: 90%;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, .3);
-        }
-
-        #error.show {
-            display: block;
-            animation: slideIn .3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(-50%) translateY(-20px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(-50%) translateY(0);
-                opacity: 1;
-            }
-        }
-
-        /* Connection Status */
-        #connection-status {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 14px;
-            background: var(--bg-controls);
-            border-radius: 20px;
-            color: #fff;
-            font-size: 13px;
-            backdrop-filter: blur(10px);
-            opacity: 0;
-            transition: opacity .3s;
-        }
-
-        #connection-status.show {
-            opacity: 1;
-        }
-
-        .status-indicator {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--warning-color);
-            animation: pulse 2s infinite;
-        }
-
-        .status-indicator.good {
-            background: var(--primary-color);
-        }
-
-        .status-indicator.bad {
-            background: var(--danger-color);
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: .5;
-            }
-        }
-
-        /* Debug Panel */
         #debug-panel {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 400px;
-            max-height: calc(100vh - 40px);
-            background: var(--bg-overlay);
-            border: 1px solid rgba(255, 255, 255, .1);
-            border-radius: var(--border-radius);
-            color: #fff;
-            font-size: 13px;
-            display: none;
-            overflow: hidden;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
-            animation: slideInRight .3s ease;
+          width: calc(100% - 20px);
+          right: 10px;
+          left: 10px;
+          top: 10px;
+          max-height: calc(100vh - 20px);
         }
 
-        @keyframes slideInRight {
-            from {
-                transform: translateX(20px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+        .btn::after {
+          display: none;
         }
 
-        #debug-panel.show {
-            display: flex;
-            flex-direction: column;
+        #connection-status {
+          top: 10px;
+          left: 10px;
+          font-size: 12px;
+          padding: 6px 12px;
+        }
+      }
+
+      /* Keyboard focus */
+      .btn:focus-visible,
+      #volume-slider:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+      }
+
+      /* Screenshot flash */
+      .screenshot-flash {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.3);
+        pointer-events: none;
+        animation: flash 0.3s ease;
+      }
+
+      @keyframes flash {
+        from {
+          opacity: 1;
         }
 
-        .debug-tabs {
-            display: flex;
-            background: rgba(255, 255, 255, .05);
-            border-bottom: 1px solid rgba(255, 255, 255, .1);
+        to {
+          opacity: 0;
         }
-
-        .debug-tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            transition: var(--transition);
-            border-bottom: 2px solid transparent;
-        }
-
-        .debug-tab:hover {
-            background: rgba(255, 255, 255, .05);
-        }
-
-        .debug-tab.active {
-            color: var(--primary-color);
-            border-bottom-color: var(--primary-color);
-        }
-
-        .debug-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, .1);
-            font-weight: 600;
-            font-size: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, .05);
-        }
-
-        .debug-close {
-            cursor: pointer;
-            font-size: 20px;
-            opacity: .6;
-            transition: opacity .2s;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-        }
-
-        .debug-close:hover {
-            opacity: 1;
-            background: rgba(255, 255, 255, .1);
-        }
-
-        .debug-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-        }
-
-        .debug-content::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .debug-content::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, .05);
-        }
-
-        .debug-content::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, .2);
-            border-radius: 3px;
-        }
-
-        .debug-section {
-            margin-bottom: 24px;
-        }
-
-        .debug-section:last-child {
-            margin-bottom: 0;
-        }
-
-        .debug-section-title {
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: var(--primary-color);
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .debug-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-            padding: 4px 0;
-        }
-
-        .debug-label {
-            opacity: .7;
-            font-size: 12px;
-        }
-
-        .debug-value {
-            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-            font-weight: 500;
-            font-size: 13px;
-        }
-
-        .debug-value.good {
-            color: var(--primary-color);
-        }
-
-        .debug-value.warning {
-            color: var(--warning-color);
-        }
-
-        .debug-value.bad {
-            color: var(--danger-color);
-        }
-
-        /* Graphs */
-        .mini-graph {
-            width: 100%;
-            height: 60px;
-            margin-top: 12px;
-            background: rgba(255, 255, 255, .05);
-            border-radius: 6px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .graph-canvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Performance Warning */
-        .perf-warning {
-            background: rgba(255, 193, 7, .1);
-            border: 1px solid var(--warning-color);
-            border-radius: 6px;
-            padding: 12px;
-            margin-top: 16px;
-            font-size: 12px;
-            line-height: 1.5;
-        }
-
-        .perf-warning-title {
-            font-weight: 600;
-            color: var(--warning-color);
-            margin-bottom: 4px;
-        }
-
-        /* Export button */
-        .export-btn {
-            margin-top: 16px;
-            width: 100%;
-            padding: 10px;
-            background: var(--primary-color);
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .export-btn:hover {
-            background: #45a049;
-        }
-
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            #toolbar {
-                bottom: 10px;
-                padding: 8px 12px;
-                gap: 4px;
-                width: calc(100% - 40px);
-                max-width: none;
-            }
-
-            .btn {
-                width: 36px;
-                height: 36px;
-                font-size: 18px;
-            }
-
-            #volume-slider {
-                width: 60px;
-            }
-
-            #debug-panel {
-                width: calc(100% - 20px);
-                right: 10px;
-                left: 10px;
-                top: 10px;
-                max-height: calc(100vh - 20px);
-            }
-
-            .btn::after {
-                display: none;
-            }
-
-            #connection-status {
-                top: 10px;
-                left: 10px;
-                font-size: 12px;
-                padding: 6px 12px;
-            }
-        }
-
-        /* Keyboard focus */
-        .btn:focus-visible,
-        #volume-slider:focus-visible {
-            outline: 2px solid var(--primary-color);
-            outline-offset: 2px;
-        }
-
-        /* Screenshot flash */
-        .screenshot-flash {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, .3);
-            pointer-events: none;
-            animation: flash .3s ease;
-        }
-
-        @keyframes flash {
-            from {
-                opacity: 1;
-            }
-
-            to {
-                opacity: 0;
-            }
-        }
+      }
     </style>
     <script src="players/srs.sdk.js"></script>
     <script src="players/webrtc.js"></script>
-</head>
+  </head>
 
-<body>
+  <body>
     <div id="player-container">
-        <video id="video" autoplay playsinline muted></video>
+      <video id="video" autoplay playsinline muted></video>
 
-        <div id="loading">
-            <div class="spinner"></div>
+      <div id="loading">
+        <div class="spinner"></div>
+      </div>
+
+      <div id="connection-status">
+        <div class="status-indicator"></div>
+        <span class="status-text">Connecting...</span>
+      </div>
+
+      <div id="toolbar">
+        <button id="play-pause" class="btn" aria-label="Play/Pause">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </button>
+
+        <div class="separator"></div>
+
+        <div class="volume-control">
+          <button id="volume-btn" class="btn" aria-label="Toggle Mute">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+              />
+            </svg>
+          </button>
+          <input
+            type="range"
+            id="volume-slider"
+            min="0"
+            max="100"
+            value="100"
+          />
         </div>
 
-        <div id="connection-status">
-            <div class="status-indicator"></div>
-            <span class="status-text">Connecting...</span>
+        <div class="separator"></div>
+
+        <button id="zoom-out" class="btn" aria-label="Zoom Out">−</button>
+        <span id="zoom-label">100%</span>
+        <button id="zoom-in" class="btn" aria-label="Zoom In">+</button>
+
+        <div class="separator"></div>
+
+        <button id="screenshot" class="btn" aria-label="Take Screenshot">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+            />
+          </svg>
+        </button>
+
+        <button id="fullscreen" class="btn" aria-label="Fullscreen">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"
+            />
+          </svg>
+        </button>
+
+        <div class="separator"></div>
+
+        <button id="debug-btn" class="btn" aria-label="Debug Info">
+          DEBUG
+        </button>
+      </div>
+
+      <div id="error"></div>
+
+      <div id="debug-panel">
+        <div class="debug-header">
+          <span>WebRTC Debug Info</span>
+          <span class="debug-close">×</span>
         </div>
-
-        <div id="toolbar">
-            <button id="play-pause" class="btn" aria-label="Play/Pause">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5v14l11-7z" />
-                </svg>
-            </button>
-
-            <div class="separator"></div>
-
-            <div class="volume-control">
-                <button id="volume-btn" class="btn" aria-label="Toggle Mute">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-                    </svg>
-                </button>
-                <input type="range" id="volume-slider" min="0" max="100" value="100">
-            </div>
-
-            <div class="separator"></div>
-
-            <button id="zoom-out" class="btn" aria-label="Zoom Out">−</button>
-            <span id="zoom-label">100%</span>
-            <button id="zoom-in" class="btn" aria-label="Zoom In">+</button>
-
-            <div class="separator"></div>
-
-            <button id="screenshot" class="btn" aria-label="Take Screenshot">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path
-                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                </svg>
-            </button>
-
-            <button id="fullscreen" class="btn" aria-label="Fullscreen">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-                </svg>
-            </button>
-
-            <div class="separator"></div>
-
-            <button id="debug-btn" class="btn" aria-label="Debug Info">DEBUG</button>
+        <div class="debug-tabs">
+          <div class="debug-tab active" data-tab="stats">Statistics</div>
+          <div class="debug-tab" data-tab="connection">Connection</div>
+          <div class="debug-tab" data-tab="media">Media</div>
         </div>
-
-        <div id="error"></div>
-
-        <div id="debug-panel">
-            <div class="debug-header">
-                <span>WebRTC Debug Info</span>
-                <span class="debug-close">×</span>
-            </div>
-            <div class="debug-tabs">
-                <div class="debug-tab active" data-tab="stats">Statistics</div>
-                <div class="debug-tab" data-tab="connection">Connection</div>
-                <div class="debug-tab" data-tab="media">Media</div>
-            </div>
-            <div class="debug-content" id="debug-content">
-                <div class="debug-section">
-                    <div class="debug-section-title">Initializing...</div>
-                </div>
-            </div>
+        <div class="debug-content" id="debug-content">
+          <div class="debug-section">
+            <div class="debug-section-title">Initializing...</div>
+          </div>
         </div>
+      </div>
     </div>
 
     <script>
-        (() => {
-            'use strict';
-            // Initialize player and expose to window for debugging
-            window.player = new WebRTCPlayer();
-        })();
+      (() => {
+        "use strict";
+        // Initialize player and expose to window for debugging
+        window.player = new WebRTCPlayer();
+      })();
     </script>
-</body>
-
+  </body>
 </html>

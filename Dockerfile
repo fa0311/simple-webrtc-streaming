@@ -15,4 +15,4 @@ COPY --from=builder /app/html /app/html
 COPY --from=builder /app/rtc.conf /app/rtc.conf
 WORKDIR /app/srs/trunk
 EXPOSE 1935 1985 1986 8000/udp
-CMD ["./objs/srs", "-c", "../../rtc.conf"]
+CMD ["./objs/srs", "-c", "../../rtc.conf", "-d"]
