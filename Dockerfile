@@ -7,7 +7,8 @@ ENV CANDIDATE=127.0.0.1
 COPY rtc.conf /usr/local/srs/conf/rtc.conf
 
 # Copy custom HTML files
-COPY html /usr/local/srs/objs/nginx/html
+COPY html/index.html /usr/local/srs/objs/nginx/html/
+COPY html/players/webrtc.js /usr/local/srs/objs/nginx/html/players/
 
 # Set working directory
 WORKDIR /usr/local/srs
