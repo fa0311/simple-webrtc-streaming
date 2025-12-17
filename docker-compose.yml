@@ -1,0 +1,9 @@
+services:
+  simple-webrtc-streaming:
+    image: ghcr.io/fa0311/simple-webrtc-streaming:latest
+    ports:
+      - "1935:1935"     # RTMP: Streaming input from OBS, etc.
+      - "1985:1985"     # HTTP API: SRS control API
+      - "1986:1986"     # Web UI: Browser-based stream viewer
+      - "8000:8000/udp" # WebRTC: Low-latency streaming
+    restart: unless-stopped
