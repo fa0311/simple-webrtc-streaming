@@ -1,7 +1,7 @@
 FROM ubuntu:22.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
-RUN apt-get install -y gcc make g++ patch unzip perl git automake && rm -rf /var/lib/apt/lists/*
+RUN apt-get install -y gcc make g++ patch unzip perl automake tclsh cmake pkg-config && rm -rf /var/lib/apt/lists/*
 COPY . /app
 WORKDIR /app/srs/trunk
 RUN ./configure && make && \
