@@ -1,4 +1,4 @@
-FROM ossrs/srs:5
+FROM ossrs/srs:6
 ENV CANDIDATE=127.0.0.1
 WORKDIR /usr/local/srs
 
