@@ -91,6 +91,23 @@ The stream will be available via WebRTC with ultra-low latency through the Web U
 > [!WARNING]
 > When streaming with OBS or similar tools, make sure to select **Low Latency** or **Ultra Low Latency** mode.  
 
+
+## Encoder Settings
+
+| Setting | Value |
+|---|---|
+| Rate Control | Constant Bitrate (CBR) |
+| Bitrate | 10000 Kbps |
+| Keyframe Interval (0 = auto) | 0 s |
+| Preset | P5: Slow (Good Quality) |
+| Tuning | Ultra Low Latency |
+| Multipass Mode | Two Passes (Quarter Resolution) |
+| Profile | high |
+| Look-ahead | On |
+| Adaptive Quantization | On |
+| Max B-frames | 0 |
+| Custom Encoder Settings | None |
+
 ---
 
 ## 📷 Web UI
